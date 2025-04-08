@@ -85,4 +85,4 @@ with gr.Blocks() as demo:
     idx.change(fn=load_sample, inputs=idx, outputs=[source, hyp])
     demo.load(fn=load_sample, inputs=[idx], outputs=[source, hyp])
 
-demo.launch()
+demo.launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", 7860)))
