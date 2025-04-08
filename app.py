@@ -2,17 +2,20 @@ import gradio as gr
 import json
 import os
 
+# ==== 路径设置 ====
 DATA_FILE = "./test_data.json"
-SAVE_FILE = "./annotations/annotations.jsonl"
 
+# Railway 上的挂载磁盘路径，或回退为本地路径
+SAVE_DIR = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", "./annotations")
+os.makedirs(SAVE_DIR, exist_ok=True)
+# ==================
+
+# 读取样本数据
 with open(DATA_FILE, "r", encoding="utf-8") as f:
     data = json.load(f)
 
-if not os.path.exists(SAVE_FILE):
-    with open(SAVE_FILE, "w", encoding="utf-8") as f:
-        pass
 
-
+# 保存标注并控制状态
 def annotate(index, score, comment, annotator):
     entry = data[index]
     record = {
@@ -24,7 +27,7 @@ def annotate(index, score, comment, annotator):
         "comment": comment,
     }
 
-    save_path = f"./annotations_{annotator}.jsonl"
+    save_path = os.path.join(SAVE_DIR, f"annotations_{annotator}.jsonl")
     with open(save_path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
@@ -85,4 +88,5 @@ with gr.Blocks() as demo:
     idx.change(fn=load_sample, inputs=idx, outputs=[source, hyp])
     demo.load(fn=load_sample, inputs=[idx], outputs=[source, hyp])
 
+# 🚀 监听 Railway 提供的端口（默认 7860）
 demo.launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", 7860)))
