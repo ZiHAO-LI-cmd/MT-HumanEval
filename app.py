@@ -1,18 +1,20 @@
 import gradio as gr
 import json
 import os
+import tempfile
 
 DATA_FILE = "./test_data.json"
 
 # 本地或 Render 环境下的保存目录
 SAVE_DIR = "./annotations"
 os.makedirs(SAVE_DIR, exist_ok=True)
-# ==================
 
 # 读取样本数据
 with open(DATA_FILE, "r", encoding="utf-8") as f:
     data = json.load(f)
 
+# 用于记录当前用户的所有打分（浏览器内存）
+user_annotations = []
 
 # 保存标注记录
 def annotate(index, score, comment, annotator):
@@ -26,6 +28,10 @@ def annotate(index, score, comment, annotator):
         "comment": comment,
     }
 
+    # ✨ 1. 保存到用户 session 记录
+    user_annotations.append(record)
+
+    # ✨ 2. 仍然保存到服务器端（可选）
     save_path = os.path.join(SAVE_DIR, f"annotations_{annotator}.jsonl")
     with open(save_path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -40,6 +46,7 @@ def annotate(index, score, comment, annotator):
             gr.update(interactive=False),
             gr.update(interactive=False),
             gr.update(interactive=False),
+            gr.update(visible=True)  # 👇 显示导出按钮
         )
 
     next_index = index + 1
@@ -52,13 +59,20 @@ def annotate(index, score, comment, annotator):
         gr.update(interactive=True),
         gr.update(interactive=True),
         gr.update(interactive=True),
+        gr.update(visible=False)
     )
 
-
+# 加载样本
 def load_sample(i):
     entry = data[i]
     return entry["source"], entry["hypothesis"]
 
+# ✨ 导出打分结果为 JSON 文件
+def export_results():
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w", encoding="utf-8")
+    json.dump(user_annotations, tmp, ensure_ascii=False, indent=2)
+    tmp.close()
+    return tmp.name
 
 with gr.Blocks() as demo:
     gr.Markdown("## Direct Assessment Annotation")
@@ -79,11 +93,20 @@ with gr.Blocks() as demo:
     output = gr.Textbox(label="Status", interactive=False)
     next_button = gr.Button("Submit and Next")
 
+    # ✨ 新增：导出按钮和文件下载组件
+    export_button = gr.Button("📥 Export My Results")
+    export_file = gr.File(label="Download your results", visible=False)
+
+    # 原打分按钮逻辑
     next_button.click(
         fn=annotate,
         inputs=[idx, score, comment, annotator],
-        outputs=[output, idx, progress, score, comment, next_button, annotator],
+        outputs=[output, idx, progress, score, comment, next_button, annotator, export_file],
     )
+
+    # 新增导出逻辑
+    export_button.click(fn=export_results, outputs=export_file)
+
     idx.change(fn=load_sample, inputs=idx, outputs=[source, hyp])
     demo.load(fn=load_sample, inputs=[idx], outputs=[source, hyp])
 
