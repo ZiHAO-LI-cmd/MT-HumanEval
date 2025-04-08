@@ -1,0 +1,88 @@
+import gradio as gr
+import json
+import os
+
+DATA_FILE = "./test_data.json"
+SAVE_FILE = "./annotations/annotations.jsonl"
+
+with open(DATA_FILE, "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+if not os.path.exists(SAVE_FILE):
+    with open(SAVE_FILE, "w", encoding="utf-8") as f:
+        pass
+
+
+def annotate(index, score, comment, annotator):
+    entry = data[index]
+    record = {
+        "index": index,
+        "annotator": annotator,
+        "source": entry["source"],
+        "hypothesis": entry["hypothesis"],
+        "score": score,
+        "comment": comment,
+    }
+
+    save_path = f"./annotations_{annotator}.jsonl"
+    with open(save_path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    completed = index + 1
+    if completed >= len(data):
+        return (
+            "🎉 All samples annotated!",
+            index,
+            f"✅ Completed {completed}/{len(data)} samples.",
+            gr.update(interactive=False),
+            gr.update(interactive=False),
+            gr.update(interactive=False),
+            gr.update(interactive=False),
+        )
+
+    next_index = index + 1
+    progress = f"{completed}/{len(data)} annotated by {annotator}"
+    return (
+        "✅ Saved",
+        next_index,
+        progress,
+        gr.update(interactive=True),
+        gr.update(interactive=True),
+        gr.update(interactive=True),
+        gr.update(interactive=True),
+    )
+
+
+def load_sample(i):
+    entry = data[i]
+    return entry["source"], entry["hypothesis"]
+
+
+with gr.Blocks() as demo:
+    gr.Markdown("## Direct Assessment Annotation")
+
+    with gr.Row():
+        annotator = gr.Textbox(
+            label="Annotator ID",
+            placeholder="Enter your name or ID",
+            value="annotator_1",
+        )
+        progress = gr.Textbox(label="Progress", interactive=False)
+
+    idx = gr.Number(value=0, visible=False)
+    source = gr.Textbox(label="Source Sentence", interactive=False)
+    hyp = gr.Textbox(label="Machine Translation", interactive=False)
+    score = gr.Slider(0, 100, step=1, label="Translation Quality Score")
+    comment = gr.Textbox(lines=2, placeholder="Optional comment...", label="Comment")
+    output = gr.Textbox(label="Status", interactive=False)
+    next_button = gr.Button("Submit and Next")
+
+    next_button.click(
+        fn=annotate,
+        inputs=[idx, score, comment, annotator],
+        outputs=[output, idx, progress, score, comment, next_button, annotator],
+    )
+    idx.change(fn=load_sample, inputs=idx, outputs=[source, hyp])
+    demo.load(fn=load_sample, inputs=[idx], outputs=[source, hyp])
+
+demo.launch()

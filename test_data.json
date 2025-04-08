@@ -1,0 +1,10 @@
+[
+  {
+    "source": "The weather is nice today.",
+    "hypothesis": "Il fait beau aujourd'hui."
+  },
+  {
+    "source": "I would like a cup of coffee.",
+    "hypothesis": "Je veux une tasse de café."
+  }
+]
