@@ -2,11 +2,10 @@ import gradio as gr
 import json
 import os
 
-# ==== 路径设置 ====
 DATA_FILE = "./test_data.json"
 
-# Railway 上的挂载磁盘路径，或回退为本地路径
-SAVE_DIR = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", "./annotations")
+# 本地或 Render 环境下的保存目录
+SAVE_DIR = "./annotations"
 os.makedirs(SAVE_DIR, exist_ok=True)
 # ==================
 
@@ -15,7 +14,7 @@ with open(DATA_FILE, "r", encoding="utf-8") as f:
     data = json.load(f)
 
 
-# 保存标注并控制状态
+# 保存标注记录
 def annotate(index, score, comment, annotator):
     entry = data[index]
     record = {
@@ -88,5 +87,4 @@ with gr.Blocks() as demo:
     idx.change(fn=load_sample, inputs=idx, outputs=[source, hyp])
     demo.load(fn=load_sample, inputs=[idx], outputs=[source, hyp])
 
-# 🚀 监听 Railway 提供的端口（默认 7860）
 demo.launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", 7860)))
