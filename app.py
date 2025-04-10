@@ -28,13 +28,13 @@ def annotate(index, score, comment, annotator):
         "comment": comment,
     }
 
-    # ✨ 1. 保存到用户 session 记录
+    # 1. 保存到用户 session 记录
     user_annotations.append(record)
 
-    # ✨ 2. 仍然保存到服务器端（可选）
-    save_path = os.path.join(SAVE_DIR, f"annotations_{annotator}.jsonl")
-    with open(save_path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    # 2. 仍然保存到服务器端（可选）
+    # save_path = os.path.join(SAVE_DIR, f"annotations_{annotator}.jsonl")
+    # with open(save_path, "a", encoding="utf-8") as f:
+    #     f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     completed = index + 1
     if completed >= len(data):
@@ -46,7 +46,7 @@ def annotate(index, score, comment, annotator):
             gr.update(interactive=False),
             gr.update(interactive=False),
             gr.update(interactive=False),
-            gr.update(visible=True)  # 👇 显示导出按钮
+            gr.update(visible=True)  # 显示导出按钮
         )
 
     next_index = index + 1
@@ -67,7 +67,7 @@ def load_sample(i):
     entry = data[i]
     return entry["source"], entry["hypothesis"]
 
-# ✨ 导出打分结果为 JSON 文件
+# 导出打分结果为 JSON 文件
 def export_results():
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w", encoding="utf-8")
     json.dump(user_annotations, tmp, ensure_ascii=False, indent=2)
@@ -93,7 +93,7 @@ with gr.Blocks() as demo:
     output = gr.Textbox(label="Status", interactive=False)
     next_button = gr.Button("Submit and Next")
 
-    # ✨ 新增：导出按钮和文件下载组件
+    # 新增：导出按钮和文件下载组件
     export_button = gr.Button("📥 Export My Results")
     export_file = gr.File(label="Download your results", visible=False)
 
