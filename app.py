@@ -79,6 +79,7 @@ def annotate(index, score, comment, annotator):
     global current_lang
     index = int(index)
     entry = data[index]
+
     record = {
         "index": index,
         "annotator": annotator,
@@ -88,6 +89,13 @@ def annotate(index, score, comment, annotator):
         "score": score,
         "comment": comment,
     }
+
+    global user_annotations
+    user_annotations = [
+        rec
+        for rec in user_annotations
+        if rec["index"] != index or rec["annotator"] != annotator
+    ]
     user_annotations.append(record)
 
     # 保存到服务器端（可选）
@@ -109,16 +117,62 @@ def annotate(index, score, comment, annotator):
         )
 
     next_index = index + 1
+    next_entry = data[next_index]
+
+    prev_score, prev_comment = 0, ""
+    for rec in user_annotations:
+        if rec["index"] == next_index and rec["annotator"] == annotator:
+            prev_score = rec["score"]
+            prev_comment = rec["comment"]
+            break
+
     progress = f"{completed}/{len(data)} annotated by {annotator}"
+    is_at_start = next_index == 0
     return (
         "✅ Saved",
         next_index,
         progress,
-        gr.update(interactive=True),
-        gr.update(interactive=True),
-        gr.update(interactive=True),
-        gr.update(interactive=True),
+        gr.update(value=prev_score, interactive=True),
+        gr.update(value=prev_comment, interactive=True),
+        gr.update(interactive=not is_at_start),  # Previous button
+        gr.update(interactive=True),  # Next button
         gr.update(visible=False),
+    )
+
+
+def go_previous(index, annotator):
+    index = int(index)
+    if index <= 0:
+        return (
+            0,
+            data[0]["source"],
+            data[0]["hypothesis"],
+            "",
+            0,
+            "",
+            f"At the beginning. 0/{len(data)}",
+        )
+
+    prev_index = index - 1
+    entry = data[prev_index]
+    prev_score, prev_comment = 0, ""
+    for rec in user_annotations:
+        if rec["index"] == prev_index and rec["annotator"] == annotator:
+            prev_score = rec["score"]
+            prev_comment = rec["comment"]
+            break
+    is_at_start = prev_index == 0
+    progress = f"{prev_index}/{len(data)} annotated by {annotator}"
+
+    return (
+        prev_index,
+        entry["source"],
+        entry["hypothesis"],
+        prev_score,
+        prev_comment,
+        progress,
+        gr.update(interactive=not is_at_start),  # Previous button
+        gr.update(interactive=True),  # Next button
     )
 
 
@@ -165,7 +219,8 @@ with gr.Blocks() as demo:
     score = gr.Slider(0, 100, step=1, label="Translation Quality Score")
     comment = gr.Textbox(lines=2, placeholder="Optional comment...", label="Comment")
     output = gr.Textbox(label="Status", interactive=False)
-    next_button = gr.Button("Submit and Next")
+    previous_button = gr.Button("⏪Previous")
+    next_button = gr.Button("⏩Next")
     export_file = gr.File(label="Download your results", visible=False)
 
     load_button.click(
@@ -187,9 +242,23 @@ with gr.Blocks() as demo:
             progress,
             score,
             comment,
+            previous_button,
             next_button,
-            annotator,
             export_file,
+        ],
+    )
+    previous_button.click(
+        fn=go_previous,
+        inputs=[idx, annotator],
+        outputs=[
+            idx,
+            source,
+            hyp,
+            score,
+            comment,
+            progress,
+            previous_button,
+            next_button,
         ],
     )
     export_button.click(
